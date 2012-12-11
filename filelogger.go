@@ -7,17 +7,17 @@ import (
 )
 
 const (
-	NOTSET   = 10
-	DEBUG    = 20
-	INFO     = 30
-	WARNING  = 40
-	ERROR    = 50
-	CRITICAL = 60
+	NOTSET   = 0
+	DEBUG    = 10
+	INFO     = 20
+	WARNING  = 30
+	ERROR    = 40
+	CRITICAL = 50
 )
 
 const (
 	FLUSH_TIME  = 1e9
-	BUFFER_SIZE = 21
+	BUFFER_SIZE = 36 * 1024
 	FLUSH_LEVEL = ERROR
 )
 
@@ -58,19 +58,21 @@ func NewFileLogger(path string) (*FileLogger, error) {
 			filelogger.file.Flush()
 			filelogger.realfile.Close()
 		}()
-		// ticker := time.NewTicker(FLUSH_TIME)
+		ticker := time.NewTicker(FLUSH_TIME)
 		for {
 			select {
 			case <-filelogger.flush:
 				filelogger.file.Flush()
-				// 	// time out flush
-				// case <-ticker.C:
-				// 	filelogger.file.Flush()
+			// time out flush
+			case <-ticker.C:
+				filelogger.file.Flush()
 			case newrecord, ok := <-filelogger.record:
 				if !ok {
 					return
 				}
 				filelogger.file.Write(newrecord.Msg)
+				newline := []byte{0x0a}
+				filelogger.file.Write(newline) // write a new line.
 				if newrecord.Level > filelogger.flushLevel {
 					filelogger.Flush()
 				}

@@ -76,9 +76,8 @@ func tcpLogger() {
 					}
 					return
 				}
-				log.Printf("Receive: %s", record.Msg)
-				// logger.Write(record)
-
+				// log.Printf("Receive: %s", record.Msg)
+				logger.Write(record)
 			}
 		}(conn)
 	}

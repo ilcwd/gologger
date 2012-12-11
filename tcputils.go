@@ -82,7 +82,6 @@ func readRecord(conn net.Conn) (*Record, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("Size: %d", size)
 	record, err := readAll(conn, int(size))
 	if err != nil {
 		return nil, err
