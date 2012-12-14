@@ -69,10 +69,13 @@ func tcpLogger() {
 				conn.SetReadDeadline(time.Now().Add(time.Duration(KEEP_ALIVE)))
 				record, err := readRecord(conn)
 				if err != nil {
-					if err != ConnCloseError {
-						log.Printf("Error reading: %s.", err.Error())
-					} else {
+					switch {
+					case err == ConnCloseError:
 						log.Printf("Connection from %s closed.", conn.RemoteAddr())
+					case err == io.EOF:
+						log.Printf("Connection from %s unexpected closed.", conn.RemoteAddr())
+					default:
+						log.Printf("Error reading: %s.", err.Error())
 					}
 					return
 				}
