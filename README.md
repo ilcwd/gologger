@@ -1,4 +1,4 @@
 gologger
 ====
 
-A TCP logger writing in golang.
+A TCP logger server writing in golang.
