@@ -18,7 +18,7 @@ const (
 	LOGGING_PATH = "/data/logs/gologger/logger.log"
 	PROTOCOL     = "tcp"
 	ADDR         = "0.0.0.0:30001"
-	FLUSH_TIME   = 1.0
+	FLUSH_TIME   = 2.0
 	BUFFER_SIZE  = 36 * 1024
 )
 
@@ -121,9 +121,8 @@ func tcpLogger() {
 
 	}()
 
-	log.Println("TCP Logger start.")
-
 	// start loop.
+	log.Println("TCP Logger start.")
 	for {
 		conn, err := socket.Accept()
 		if err != nil {
@@ -134,6 +133,7 @@ func tcpLogger() {
 			defer conn.Close()
 
 			for {
+				// set max keep alive timeout.
 				conn.SetReadDeadline(time.Now().Add(time.Duration(KEEP_ALIVE)))
 				record, err := readRecord(conn)
 				if err != nil {
