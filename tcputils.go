@@ -5,10 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
-	"log"
 	"net"
-	"os"
-	"os/signal"
 )
 
 const (
@@ -18,18 +15,6 @@ const (
 
 var WaitForRecordError error = errors.New("Wait for record.")
 var ConnCloseError error = errors.New("Connection closed.")
-
-func handleSignal() {
-	c := make(chan os.Signal, 1)
-	signal.Notify(c)
-
-	go func() {
-		for sig := range c {
-			log.Printf("Signal %v come.\n", sig)
-			os.Exit(1)
-		}
-	}()
-}
 
 func readAll(conn net.Conn, n int) ([]byte, error) {
 	buffer := make([]byte, n)
@@ -61,19 +46,22 @@ func readSize(conn net.Conn) (uint32, error) {
 	if err != nil {
 		return 0, err
 	}
+
 	return byte2uint32(buf)
 }
 
+// Convert a 4-byte array into uint32, using BidEndian
 // return 0 if failed.
 func byte2uint32(b []byte) (uint32, error) {
 
 	buf := bytes.NewBuffer(b)
 	var res uint32
-	// network bytes is littleendian.
-	err := binary.Read(buf, binary.LittleEndian, &res)
+	// network bytes is BigEndian.
+	err := binary.Read(buf, binary.BigEndian, &res)
 	if err != nil {
 		return 0, err
 	}
+
 	return res, nil
 }
 

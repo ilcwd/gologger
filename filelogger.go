@@ -16,8 +16,6 @@ const (
 )
 
 const (
-	FLUSH_TIME  = 1e9
-	BUFFER_SIZE = 36 * 1024
 	FLUSH_LEVEL = ERROR
 )
 
@@ -36,7 +34,10 @@ type FileLogger struct {
 	flushLevel int
 }
 
-func NewFileLogger(path string) (*FileLogger, error) {
+// Create file logger
+// Param buffer - max records in byte stored in memory.
+// Param flush_time - interval in second to flush records to file.
+func NewFileLogger(path string, buffer int, flush_time float64) (*FileLogger, error) {
 	file, realfile, err := openfile(path)
 	if err != nil {
 		return nil, err
@@ -58,7 +59,7 @@ func NewFileLogger(path string) (*FileLogger, error) {
 			filelogger.file.Flush()
 			filelogger.realfile.Close()
 		}()
-		ticker := time.NewTicker(FLUSH_TIME)
+		ticker := time.NewTicker(time.Duration(flush_time * float64(time.Second)))
 		for {
 			select {
 			case <-filelogger.flush:
@@ -71,8 +72,8 @@ func NewFileLogger(path string) (*FileLogger, error) {
 					return
 				}
 				filelogger.file.Write(newrecord.Msg)
-				newline := []byte{0x0a}
-				filelogger.file.Write(newline) // write a new line.
+				// newline := []byte{0x0a}
+				// filelogger.file.Write(newline) // write a new line.
 				if newrecord.Level > filelogger.flushLevel {
 					filelogger.Flush()
 				}
@@ -93,6 +94,7 @@ func openfile(path string) (*bufio.Writer, *os.File, error) {
 	return wr, file, nil
 }
 
+// rotate hourly
 func (f *FileLogger) shouldRotate(now time.Time) bool {
 	return f.lastRotate.Hour() != now.Hour()
 }
