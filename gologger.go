@@ -106,11 +106,14 @@ func tcpLogger() {
 	go func() {
 		for {
 			switch <-sigc {
-			case syscall.SIGINT:
-				log.Println("A signal INT catched, flush logger.")
+			case syscall.SIGHUP:
+				log.Println("A signal HUP catched, flush logger.")
 				logger.Flush()
+
+			case syscall.SIGINT:
+				fallthrough
 			case syscall.SIGTERM:
-				log.Println("A signal TERM catched, terminate logger.")
+				log.Println("A signal TERM or INT catched, terminate logger.")
 				socket.Close()
 				socket = nil
 				// TODO: sub connections maybe not close.
