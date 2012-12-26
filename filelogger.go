@@ -86,8 +86,8 @@ func NewFileLogger(path string, buffer int, flush_time float64) (*FileLogger, er
 					return
 				}
 				filelogger.file.Write(newrecord.Msg)
-				// newline := []byte{0x0a}
-				// filelogger.file.Write(newline) // write a new line.
+				newline := []byte{0x0a}
+				filelogger.file.Write(newline) // write a new line.
 				filelogger.hourlyRotate()
 				if newrecord.Level > filelogger.flushLevel {
 					filelogger.Flush()
@@ -129,6 +129,14 @@ func (f *FileLogger) hourlyRotate() {
 		log.Printf("Error on opening new log file: %s.\n", err.Error())
 		return
 	}
+
+	// flush and close old fd.
+	f.file.Flush()
+	f.file = nil
+	f.realfile.Close()
+	f.realfile = nil
+
+	// assigned to new file.
 	f.file = file
 	f.realfile = realfile
 	f.lastRotate = now
