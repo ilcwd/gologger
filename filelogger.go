@@ -117,7 +117,7 @@ func (f *FileLogger) hourlyRotate() {
 	}
 
 	srcname := f.path
-	dstname := f.path + now.Format(".2006-01-02_15")
+	dstname := f.path + f.lastRotate.Format(".2006-01-02_15")
 	err := os.Rename(srcname, dstname)
 	if err != nil {
 		log.Printf("Error on rename log file: %s.\n", err.Error())

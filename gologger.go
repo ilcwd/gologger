@@ -2,15 +2,11 @@ package main
 
 import (
 	"flag"
-	"io"
 	"log"
-	"net"
-	"net/http"
 	"os"
 	"os/signal"
 	"runtime"
 	"syscall"
-	"time"
 )
 
 const (
@@ -25,6 +21,7 @@ const (
 var (
 	logger *FileLogger
 
+	protocol       string
 	go_process_num int
 	logging_path   string
 	addr           string
@@ -38,6 +35,7 @@ func initFlag() {
 	flag.IntVar(&buffer_size, "b", BUFFER_SIZE, "buffer size in byte.")
 	flag.StringVar(&logging_path, "p", LOGGING_PATH, "log file to write.")
 	flag.StringVar(&addr, "h", ADDR, "bind address.")
+	flag.StringVar(&protocol, "P", PROTOCOL, "protocol.")
 	flag.Parse()
 }
 
@@ -61,28 +59,7 @@ func initSignal() chan os.Signal {
 	return c
 }
 
-func handleLog(resp http.ResponseWriter, req *http.Request) {
-	defer req.Body.Close()
-	body := make([]byte, req.ContentLength)
-	io.ReadFull(req.Body, body)
-	record := &Record{INFO, body}
-	logger.Write(record)
-	resp.Write([]byte("ok,\n"))
-}
-
-func handleError(resp http.ResponseWriter, req *http.Request) {
-	resp.Write([]byte("Not Found.\n"))
-}
-
-func httpLogger() {
-	initLogger()
-	log.Println("HTTP Logger start.")
-	http.HandleFunc("/log", handleLog)
-	http.HandleFunc("/", handleError)
-	http.ListenAndServe(":10001", nil)
-}
-
-func tcpLogger() {
+func main() {
 
 	initFlag()
 	initLogger()
@@ -90,75 +67,14 @@ func tcpLogger() {
 	runtime.GOMAXPROCS(go_process_num)
 	log.Printf("Max go processes set to %d.\n", go_process_num)
 
-	socket, err := net.Listen(PROTOCOL, addr)
-	if err != nil {
-		log.Fatalf("Cannot bind to %s, error is %s .\n", PROTOCOL, addr, err.Error())
+	prot := protocol
+	switch prot {
+	case "tcp":
+		tcpLogger()
+	case "http":
+		httpLogger()
+	default:
+		log.Fatalf("Unknown protocol %s.\n", prot)
 	}
-	defer func() {
-		if socket != nil {
-			socket.Close()
-		}
-	}()
-	log.Printf("Bind to %s.\n", addr)
 
-	// handle signals
-	sigc := initSignal()
-	go func() {
-		for {
-			switch <-sigc {
-			case syscall.SIGHUP:
-				log.Println("A signal HUP catched, flush logger.")
-				logger.Flush()
-
-			case syscall.SIGINT:
-				fallthrough
-			case syscall.SIGTERM:
-				log.Println("A signal TERM or INT catched, terminate logger.")
-				socket.Close()
-				socket = nil
-				// TODO: sub connections maybe not close.
-				logger.Flush()
-				os.Exit(0)
-			}
-		}
-
-	}()
-
-	// start loop.
-	log.Println("TCP Logger start.")
-	for {
-		conn, err := socket.Accept()
-		if err != nil {
-			log.Printf("Error while accepting: %s.", err)
-		}
-
-		go func(conn net.Conn) {
-			defer conn.Close()
-
-			for {
-				// set max keep alive timeout.
-				conn.SetReadDeadline(time.Now().Add(time.Duration(KEEP_ALIVE)))
-				record, err := readRecord(conn)
-				if err != nil {
-					switch {
-					case err == ConnCloseError:
-						log.Printf("Connection from %s closed.", conn.RemoteAddr())
-					case err == io.EOF:
-						log.Printf("Connection from %s unexpected closed.", conn.RemoteAddr())
-					default:
-						log.Printf("Error reading: %s.", err.Error())
-					}
-					return
-				}
-				logger.Write(record)
-			}
-		}(conn)
-	}
-	// never here
-	os.Exit(1)
-
-}
-
-func main() {
-	tcpLogger()
 }
