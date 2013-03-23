@@ -21,6 +21,11 @@ const (
 	CHAN_SIZE   = 100
 )
 
+const (
+	HOURLY_ROTATE = "H"
+	DAILY_ROTATE  = "D"
+)
+
 type Record struct {
 	Level int
 	Msg   []byte
@@ -28,6 +33,7 @@ type Record struct {
 
 type FileLogger struct {
 	path        string
+	rotate_type string
 	lastRotate  time.Time
 	file        *bufio.Writer
 	realfile    *os.File
@@ -38,31 +44,29 @@ type FileLogger struct {
 }
 
 // Create file logger
-// Param buffer - max records in byte stored in memory.
-// Param flush_time - interval in second to flush records to file.
-func NewFileLogger(path string, buffer int, flush_time float64) (*FileLogger, error) {
+// Param buffer : max records in byte stored in memory.
+// Param flush_time : interval in second to flush records to file.
+// Param rotate_type : "H" - rotate hourly, "D" - rotate daily.
+func NewFileLogger(path string, buffer int, flush_time float64, rotate_type string) (*FileLogger, error) {
 	file, realfile, err := openFile(path, buffer)
 	if err != nil {
 		return nil, err
 	}
-
 	now := time.Now()
 	filelogger := FileLogger{
 		path,
+		rotate_type,
 		now,
 		file,
 		realfile,
 		make(chan *Record, CHAN_SIZE),
-		make(chan bool, 1),
+		make(chan bool),
 		FLUSH_LEVEL,
 		buffer,
 	}
-
 	go func() {
-		defer func() {
-			filelogger.file.Flush()
-			filelogger.realfile.Close()
-		}()
+		defer filelogger.file.Flush()
+		defer filelogger.realfile.Close()
 
 		// time out flush and rotate
 		go func() {
@@ -79,7 +83,6 @@ func NewFileLogger(path string, buffer int, flush_time float64) (*FileLogger, er
 			// flush manually
 			case <-filelogger.flush:
 				filelogger.file.Flush()
-
 			// write log.
 			case newrecord, ok := <-filelogger.record:
 				if !ok { // chan closed, end function.
@@ -88,7 +91,7 @@ func NewFileLogger(path string, buffer int, flush_time float64) (*FileLogger, er
 				filelogger.file.Write(newrecord.Msg)
 				newline := []byte{0x0a}
 				filelogger.file.Write(newline) // write a new line.
-				filelogger.hourlyRotate()
+				filelogger.doTimeingRotate()
 				if newrecord.Level > filelogger.flushLevel {
 					filelogger.Flush()
 				}
@@ -108,16 +111,26 @@ func openFile(path string, buffer int) (*bufio.Writer, *os.File, error) {
 	return wr, file, nil
 }
 
-// if one hour elapsed, rotate the file.
-func (f *FileLogger) hourlyRotate() {
-
+func (f *FileLogger) doTimeingRotate() {
 	now := time.Now()
-	if f.lastRotate.Hour() == now.Hour() {
+	var dstname string
+	switch f.rotate_type {
+	case DAILY_ROTATE:
+		if f.lastRotate.Day() == now.Day() {
+			return
+		}
+		dstname = f.path + f.lastRotate.Format(".2006-01-02")
+	case HOURLY_ROTATE:
+		if f.lastRotate.Hour() == now.Hour() {
+			return
+		}
+		dstname = f.path + f.lastRotate.Format(".2006-01-02_15")
+	default:
+		// TODO: do not rotate.
 		return
 	}
 
 	srcname := f.path
-	dstname := f.path + f.lastRotate.Format(".2006-01-02_15")
 	err := os.Rename(srcname, dstname)
 	if err != nil {
 		log.Printf("Error on rename log file: %s.\n", err.Error())
@@ -145,7 +158,13 @@ func (f *FileLogger) hourlyRotate() {
 }
 
 func (f *FileLogger) Flush() {
-	f.flush <- true
+	// non-blocking flush
+	// avoid flush file too often
+	select {
+	case f.flush <- true:
+		// pass
+	default:
+	}
 }
 
 // a buffered write function
