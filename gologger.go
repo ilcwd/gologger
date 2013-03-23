@@ -16,6 +16,8 @@ const (
 	ADDR         = "0.0.0.0:30001"
 	FLUSH_TIME   = 2.0
 	BUFFER_SIZE  = 36 * 1024
+	ROTATE_TYPE  = "D"
+	LOGGING_NAME = "Default"
 )
 
 var (
@@ -27,6 +29,7 @@ var (
 	addr           string
 	buffer_size    int
 	flush_time     float64
+	rotate_type    string
 )
 
 func initFlag() {
@@ -36,6 +39,7 @@ func initFlag() {
 	flag.StringVar(&logging_path, "p", LOGGING_PATH, "log file to write.")
 	flag.StringVar(&addr, "h", ADDR, "bind address.")
 	flag.StringVar(&protocol, "P", PROTOCOL, "protocol.")
+	flag.StringVar(&rotate_type, "R", ROTATE_TYPE, "determine when to rotate log file.")
 	flag.Parse()
 }
 
@@ -45,7 +49,7 @@ func initLogger() {
 
 	// file logger
 	var err error
-	logger, err = NewFileLogger(logging_path, buffer_size, flush_time)
+	logger, err = NewFileLogger(logging_path, buffer_size, flush_time, rotate_type)
 	if err != nil {
 		log.Fatalf("On creating logger: %s", err.Error())
 	}
@@ -60,7 +64,6 @@ func initSignal() chan os.Signal {
 }
 
 func main() {
-
 	initFlag()
 	initLogger()
 
