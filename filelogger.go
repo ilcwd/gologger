@@ -22,6 +22,10 @@ const (
 )
 
 const (
+	RECORD_DEFAULT = "default"
+)
+
+const (
 	HOURLY_ROTATE = "H"
 	DAILY_ROTATE  = "D"
 )
@@ -29,6 +33,7 @@ const (
 type Record struct {
 	Level int
 	Msg   []byte
+	Name  string
 }
 
 type FileLogger struct {

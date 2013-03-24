@@ -1,0 +1,19 @@
+[
+    {
+        "LoggingPath": "/data/logs/a.log",
+        "LoggingName": "a",
+        "FlushTime": 2.0,
+        "BufferSize": 100000,
+        "RotateType": "H"
+    },
+    {
+        "LoggingPath": "/data/logs/b.log",
+        "LoggingName": "b"
+    },
+    {
+        "LoggingPath": "/data/logs/default.log",
+        "LoggingName": "default"
+    }
+]
+]
+

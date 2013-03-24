@@ -74,5 +74,5 @@ func readRecord(conn net.Conn) (*Record, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Record{DEBUG, record}, nil
+	return &Record{DEBUG, record, RECORD_DEFAULT}, nil
 }

@@ -29,7 +29,7 @@ func tcpLogger() {
 			switch <-sigc {
 			case syscall.SIGHUP:
 				log.Println("A signal HUP catched, flush logger.")
-				logger.Flush()
+				flushLogger()
 
 			case syscall.SIGINT:
 				fallthrough
@@ -38,7 +38,7 @@ func tcpLogger() {
 				socket.Close()
 				socket = nil
 				// TODO: sub connections maybe not close.
-				logger.Flush()
+				flushLogger()
 				os.Exit(0)
 			}
 		}
@@ -70,6 +70,10 @@ func tcpLogger() {
 						log.Printf("Error reading: %s.", err.Error())
 					}
 					return
+				}
+				logger, ok := loggermapping[record.Name]
+				if !ok {
+					logger = loggermapping[RECORD_DEFAULT]
 				}
 				logger.Write(record)
 			}

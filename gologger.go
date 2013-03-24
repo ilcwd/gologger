@@ -21,25 +21,20 @@ const (
 )
 
 var (
-	logger *FileLogger
+	loggermapping map[string]*FileLogger
 
 	protocol       string
 	go_process_num int
 	logging_path   string
 	addr           string
-	buffer_size    int
-	flush_time     float64
-	rotate_type    string
+	config_path    string
 )
 
 func initFlag() {
 	flag.IntVar(&go_process_num, "c", GO_PROCESS, "max go processes number.")
-	flag.Float64Var(&flush_time, "f", FLUSH_TIME, "flush time in second.")
-	flag.IntVar(&buffer_size, "b", BUFFER_SIZE, "buffer size in byte.")
-	flag.StringVar(&logging_path, "p", LOGGING_PATH, "log file to write.")
 	flag.StringVar(&addr, "h", ADDR, "bind address.")
 	flag.StringVar(&protocol, "P", PROTOCOL, "protocol.")
-	flag.StringVar(&rotate_type, "R", ROTATE_TYPE, "determine when to rotate log file.")
+	flag.StringVar(&config_path, "C", "", "JSON config file.")
 	flag.Parse()
 }
 
@@ -47,20 +42,70 @@ func initLogger() {
 	// self logger
 	log.SetFlags(log.Ldate | log.Ltime)
 
-	// file logger
-	var err error
-	logger, err = NewFileLogger(logging_path, buffer_size, flush_time, rotate_type)
+	// path -> filelogger
+	path_to_logger := make(map[string]*FileLogger)
+	// initial loggers mapping
+	loggermapping = make(map[string]*FileLogger)
+
+	config_items, err := LoadJSONConfig(config_path)
 	if err != nil {
-		log.Fatalf("On creating logger: %s", err.Error())
+		log.Fatalf("[ERROR] Loading config = %s failed, err = %s", config_path, err.Error())
 	}
-	log.Printf("Logger buffer size %d bytes.\n", buffer_size)
-	log.Printf("Logger flush time %f seconds.\n", flush_time)
+	if len(config_items) == 0 {
+		log.Fatalf("[ERROR] Empty config, path = %s.\n", config_path)
+	}
+
+	var logger *FileLogger
+	var ok bool
+	// initial logger
+	for _, item := range config_items {
+		// file logger
+		log.Printf("Initialing logger = %s.\n", item.LoggingName)
+
+		logger, ok = path_to_logger[item.LoggingPath]
+		if ok {
+			// if two loggers share the same file, they share the same logger
+			log.Printf("Logger %s is exists.\n", item.LoggingName)
+			goto FINAL
+		}
+		logger, err = NewFileLogger(
+			item.LoggingPath,
+			item.BufferSize,
+			item.FlushTime,
+			item.RotateType,
+		)
+		if err != nil {
+			log.Fatalf("[ERROR] On creating logger = %v , err = %s", item, err.Error())
+		}
+		log.Printf("Logger %s buffer size %d bytes.\n",
+			item.LoggingName, item.BufferSize)
+		log.Printf("Logger %s flush time %f seconds.\n",
+			item.LoggingName, item.FlushTime)
+
+		path_to_logger[item.LoggingPath] = logger
+
+	FINAL:
+		loggermapping[item.LoggingName] = logger
+	}
+
+	// if the "default" logger is not presented, raise error.
+	_, ok = loggermapping[RECORD_DEFAULT]
+	if !ok {
+		log.Fatalf("[ERROR] Logger default is not set.\n")
+	}
+
 }
 
 func initSignal() chan os.Signal {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGINT, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGUSR1)
 	return c
+}
+
+func flushLogger() {
+	for _, logger := range loggermapping {
+		logger.Flush()
+	}
 }
 
 func main() {
@@ -77,7 +122,7 @@ func main() {
 	case "http":
 		httpLogger()
 	default:
-		log.Fatalf("Unknown protocol %s.\n", prot)
+		log.Fatalf("[ERROR] Unknown protocol %s.\n", prot)
 	}
 
 }

@@ -10,8 +10,8 @@ func handleLog(resp http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	body := make([]byte, req.ContentLength)
 	io.ReadFull(req.Body, body)
-	record := &Record{INFO, body}
-	logger.Write(record)
+	record := &Record{INFO, body, RECORD_DEFAULT}
+	loggermapping[RECORD_DEFAULT].Write(record)
 	resp.Write([]byte("ok,\n"))
 }
 
