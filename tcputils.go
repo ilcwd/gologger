@@ -6,11 +6,16 @@ import (
 	"errors"
 	"io"
 	"net"
+	"strings"
 )
 
 const (
 	KEEP_ALIVE          = 60e9
 	SOCKET_READ_TIMEOUT = 1e9
+
+	NAMED_MAGIC_CODE_SIZE = 2
+	NAMED_SIZE            = 1
+	MAGIC_CODE            = "\x00\x08"
 )
 
 var WaitForRecordError error = errors.New("Wait for record.")
@@ -40,7 +45,7 @@ func readAll(conn net.Conn, n int) ([]byte, error) {
 	return buffer[:read], err
 }
 
-func readSize(conn net.Conn) (uint32, error) {
+func readUInt32(conn net.Conn) (uint32, error) {
 
 	buf, err := readAll(conn, 4)
 	if err != nil {
@@ -65,14 +70,50 @@ func byte2uint32(b []byte) (uint32, error) {
 	return res, nil
 }
 
-func readRecord(conn net.Conn) (*Record, error) {
-	size, err := readSize(conn)
+func readNamedRecord(conn net.Conn) (*Record, error) {
+	name_string := RECORD_DEFAULT
+	is_named_record := false
+
+	size, err := readUInt32(conn)
 	if err != nil {
 		return nil, err
 	}
-	record, err := readAll(conn, int(size))
+
+	// 2 - bytes for magic cocde
+	magic_bytes, err := readAll(conn, NAMED_MAGIC_CODE_SIZE)
 	if err != nil {
 		return nil, err
 	}
-	return &Record{DEBUG, record, RECORD_DEFAULT}, nil
+
+	// magic code for compatiblity
+	if magic_bytes[0] == byte(0x00) && magic_bytes[1] == byte(0x08) {
+		// a named record
+		one_byte_array, err := readAll(conn, NAMED_SIZE)
+		if err != nil {
+			return nil, err
+		}
+		name_size := int(one_byte_array[0])
+		bytes_name, err := readAll(conn, name_size)
+		if err != nil {
+			return nil, err
+		}
+		name_string = strings.ToLower(string(bytes_name))
+		size -= uint32(NAMED_MAGIC_CODE_SIZE + NAMED_SIZE + name_size)
+		is_named_record = true
+
+	} else {
+		size -= NAMED_MAGIC_CODE_SIZE
+	}
+
+	record_bytes, err := readAll(conn, int(size))
+	if err != nil {
+		return nil, err
+	}
+	if !is_named_record {
+		buf := bytes.NewBuffer(magic_bytes)
+		buf.Write(record_bytes)
+		// record_bytes = bytes.Join([][]byte{magic_bytes, record_bytes}, []byte(""))
+		return &Record{DEBUG, buf.Bytes(), name_string}, nil
+	}
+	return &Record{DEBUG, record_bytes, name_string}, nil
 }
