@@ -1,22 +1,22 @@
-gologger
-====
+# gologger
+
 
 A TCP logger server writing in golang.
 
 
-# Dependency
+## Dependency
 
 ``` clojure
 go1
 ```
 
-# Build
+## Build
 
 ``` clojure
 cd /path/to/gologger && go build gologger
 ```
 
-# Run
+## Run
 
 ``` clojure
 ./gologger -c example.json
