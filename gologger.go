@@ -19,12 +19,10 @@ const (
 	BUFFER_SIZE  = 36 * 1024
 	ROTATE_TYPE  = "D"
 	LOGGING_NAME = "Default"
-<<<<<<< HEAD
-	KEEP_ALIVE   = 3600e9
-=======
+
+	KEEP_ALIVE = 3600e9
 
 	NOT_SET_LOGGING_NAME = "nOt_Set"
->>>>>>> 704a9b67cb7c778bb182d06b6083d093384e188a
 )
 
 var (
