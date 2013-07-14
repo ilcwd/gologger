@@ -18,6 +18,7 @@ const (
 	BUFFER_SIZE  = 36 * 1024
 	ROTATE_TYPE  = "D"
 	LOGGING_NAME = "Default"
+	KEEP_ALIVE   = 3600e9
 )
 
 var (

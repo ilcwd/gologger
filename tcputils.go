@@ -9,7 +9,6 @@ import (
 )
 
 const (
-	KEEP_ALIVE          = 60e9
 	SOCKET_READ_TIMEOUT = 1e9
 )
 
