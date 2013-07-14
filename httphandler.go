@@ -22,6 +22,6 @@ func handleError(resp http.ResponseWriter, req *http.Request) {
 func httpLogger() {
 	log.Printf("Serves at %s .", addr)
 	http.HandleFunc("/log", handleLog)
-	http.HandleFunc("/", handleError)
+	http.HandleFunc("/error", handleError)
 	http.ListenAndServe(addr, nil)
 }

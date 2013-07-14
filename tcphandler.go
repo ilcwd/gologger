@@ -30,10 +30,7 @@ func tcpLogger() {
 			case syscall.SIGHUP:
 				log.Println("A signal HUP catched, flush logger.")
 				flushLogger()
-
-			case syscall.SIGINT:
-				fallthrough
-			case syscall.SIGTERM:
+			case syscall.SIGTERM, syscall.SIGINT:
 				log.Println("A signal TERM or INT catched, terminate logger.")
 				socket.Close()
 				socket = nil
@@ -59,7 +56,7 @@ func tcpLogger() {
 			for {
 				// set max keep alive timeout.
 				conn.SetReadDeadline(time.Now().Add(time.Duration(KEEP_ALIVE)))
-				record, err := readRecord(conn)
+				record, err := readNamedRecord(conn)
 				if err != nil {
 					switch {
 					case err == ConnCloseError:
