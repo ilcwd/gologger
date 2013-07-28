@@ -17,7 +17,9 @@ cd /path/to/gologger && go build gologger
 ./gologger -c example.json
 ```
 
-## A log message's structure
+## Next generation message format
+
+Maybe BSON is much better.
 
 ``` clojure
 
@@ -35,10 +37,10 @@ kv_element := "n" key "\n"				; NULL
      		| "i" key "\n" int32		; signed int32
       		| "I" key "\n" uint32		; unsigned int32
       		| "l" key "\n" int64		; signed int64
-      		| "L" key "\n" uint64		: unsigned int64
-      		| "b" key "\n" binary		: binary data
+      		| "L" key "\n" uint64		; unsigned int64
+      		| "b" key "\n" binary		; binary data
       		| "s" key "\n" string		; string in utf8 coding
-      		| "d" key "\n" double		: 64-bit IEEE 754 floating point
+      		| "d" key "\n" double		; 64-bit IEEE 754 floating point
       		| "t" key "\n"				; boolean true
       		| "f" key "\n"				; boolean false
 
